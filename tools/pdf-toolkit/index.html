@@ -44,7 +44,6 @@
       <input type="text" id="toolSearch" placeholder="Search tools — try “merge”" autocomplete="off">
     </div>
     <button class="icon-toggle" id="themeToggleBtn" title="Toggle dark mode">🌙</button>
-    <button class="pro-pill" id="proPillBtn">⭐ Upgrade</button>
   </div>
 
   <p class="sub" style="max-width:640px;margin:0 0 18px;">Everything runs locally in your browser — nothing is uploaded anywhere.</p>
@@ -57,7 +56,6 @@
         <p>Pick a tool below, or search for what you need.</p>
       </div>
       <div class="hh-meta">
-        <div id="homeProStatus">Free edition</div>
         <div>Version 2.0.0</div>
       </div>
     </div>
@@ -78,7 +76,6 @@
       <div class="quick-actions">
         <button class="btn btn-secondary" id="qaSettings">⚙ Settings</button>
         <button class="btn btn-secondary" id="qaTheme">🌓 Toggle theme</button>
-        <button class="btn btn-secondary" id="qaUpgrade">⭐ Upgrade to Pro</button>
       </div>
     </div>
 
@@ -131,11 +128,7 @@
   <section class="panel" id="panel-merge">
     <button class="back-link" onclick="showView('home')">← Back to Home</button>
     <div class="tool-heading-row">
-      <h2 class="tool-title">Merge &amp; organize PDFs <span class="pro-badge">PRO</span></h2>
-    </div>
-    <div class="pro-lock-banner" id="merge-lockBanner" style="display:none;">
-      <span>🔒 This is a Pro tool.</span>
-      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+      <h2 class="tool-title">Merge &amp; organize PDFs</h2>
     </div>
     <p class="tool-sub">Add one or more PDFs, drag pages into any order across files, remove pages you don't want, then combine.</p>
 
@@ -171,11 +164,7 @@
   <section class="panel" id="panel-split">
     <button class="back-link" onclick="showView('home')">← Back to Home</button>
     <div class="tool-heading-row">
-      <h2 class="tool-title">Split a PDF <span class="pro-badge">PRO</span></h2>
-    </div>
-    <div class="pro-lock-banner" id="split-lockBanner" style="display:none;">
-      <span>🔒 This is a Pro tool.</span>
-      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+      <h2 class="tool-title">Split a PDF</h2>
     </div>
     <p class="tool-sub">Upload one PDF, pick the pages you want, and choose how to split it up.</p>
 
@@ -224,11 +213,7 @@
   <section class="panel" id="panel-compress">
     <button class="back-link" onclick="showView('home')">← Back to Home</button>
     <div class="tool-heading-row">
-      <h2 class="tool-title">Compress a PDF <span class="pro-badge">PRO</span></h2>
-    </div>
-    <div class="pro-lock-banner" id="compress-lockBanner" style="display:none;">
-      <span>🔒 This is a Pro tool.</span>
-      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+      <h2 class="tool-title">Compress a PDF</h2>
     </div>
     <p class="tool-sub">Shrinks embedded JPEG images and repacks the file to save space. Best for scanned or photo-heavy PDFs.</p>
 
@@ -269,11 +254,7 @@
   <section class="panel" id="panel-protect">
     <button class="back-link" onclick="showView('home')">← Back to Home</button>
     <div class="tool-heading-row">
-      <h2 class="tool-title">Password protect a PDF <span class="pro-badge">PRO</span></h2>
-    </div>
-    <div class="pro-lock-banner" id="protect-lockBanner" style="display:none;">
-      <span>🔒 This is a Pro tool.</span>
-      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+      <h2 class="tool-title">Password protect a PDF</h2>
     </div>
     <p class="tool-sub">Adds a standard PDF password (RC4, 40-bit) so the file needs a password to open.</p>
 
@@ -723,11 +704,7 @@
   <section class="panel" id="panel-ocr">
     <button class="back-link" onclick="showView('home')">← Back to Home</button>
     <div class="tool-heading-row">
-      <h2 class="tool-title">OCR PDF <span class="pro-badge">PRO</span></h2>
-    </div>
-    <div class="pro-lock-banner" id="ocr-lockBanner" style="display:none;">
-      <span>🔒 This is a Pro tool.</span>
-      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+      <h2 class="tool-title">OCR PDF</h2>
     </div>
     <p class="tool-sub">Runs text recognition on a scanned or image-based PDF, right in your browser. Output a searchable PDF (original look, invisible selectable text layer) or plain extracted text.</p>
 
