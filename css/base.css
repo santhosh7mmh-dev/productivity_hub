@@ -1,0 +1,170 @@
+/*
+  base.css
+  --------
+  Reset + foundational element styling. No component classes live here —
+  this file only ever touches bare HTML elements and html/body-level
+  concerns (scrollbars, selection color, focus rings).
+*/
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  height: 100%;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+a { color: inherit; text-decoration: none; }
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+
+ul, ol { list-style: none; }
+
+img, svg { display: block; max-width: 100%; }
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---- Scrollbars (WebKit + Firefox) ---- */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--r-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---- Keyboard-visible focus ring, hidden for mouse users ----
+   Every interactive component in components.css should NOT set its own
+   :focus outline: none — this is the single accessible fallback. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---- App root layout scaffold ---- */
+#app {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  z-index: var(--z-content);
+}
+
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-w);
+  transition: margin-left var(--dur-med) var(--ease-out);
+}
+[data-sidebar="collapsed"] .app-main { margin-left: var(--sidebar-w-collapsed); }
+
+@media (max-width: 860px) {
+  .app-main { margin-left: 0; padding-bottom: 76px; } /* room for bottom nav */
+}
+
+.app-view {
+  flex: 1 1 auto;
+  padding: var(--sp-6) var(--sp-8) var(--sp-16);
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+}
+@media (max-width: 640px) {
+  .app-view { padding: var(--sp-4) var(--sp-4) var(--sp-12); }
+}
+
+/* Used by routes that embed a full standalone app (e.g. the PDF Toolkit
+   iframe) and need to own their entire viewport rather than sit inside
+   the Hub's normal content column/padding. */
+.app-view.full-bleed {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  display: flex;
+}
+
+.pdftoolkit-frame-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 100%;
+}
+.pdftoolkit-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+.pdftoolkit-frame.ready { opacity: 1; }
+.pdftoolkit-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.view-enter {
+  animation: viewFadeIn var(--dur-med) var(--ease-out);
+}
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}

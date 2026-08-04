@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Toolkit</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  // Apply saved theme immediately to avoid a flash of the wrong theme.
+  (function () {
+    try {
+      const settings = JSON.parse(localStorage.getItem('pdftk_settings') || '{}');
+      document.documentElement.setAttribute('data-theme', settings.darkMode ? 'dark' : 'light');
+      if (settings.animations === false) document.documentElement.classList.add('no-anim');
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+  })();
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Added for the new "Convert Line Breaks to Paragraphs" tool: used only to render a read-only
+     HTML preview of the resulting DOCX. Does not touch any existing tool. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+
+</head>
+<body>
+<div class="bg-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="cursor-spotlight" id="cursorSpotlight" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="appbar">
+    <div class="brand" id="brandHome" title="Go home">
+      <span class="logo">🗂️</span>
+      <span class="name">PDF Toolkit</span>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="toolSearch" placeholder="Search tools — try “merge”" autocomplete="off">
+    </div>
+    <button class="icon-toggle" id="themeToggleBtn" title="Toggle dark mode">🌙</button>
+    <button class="pro-pill" id="proPillBtn">⭐ Upgrade</button>
+  </div>
+
+  <p class="sub" style="max-width:640px;margin:0 0 18px;">Everything runs locally in your browser — nothing is uploaded anywhere.</p>
+
+  <!-- ===================== HOME DASHBOARD ===================== -->
+  <section class="panel active" id="panel-home">
+    <div class="home-hero">
+      <div class="hh-text">
+        <h2>Welcome back</h2>
+        <p>Pick a tool below, or search for what you need.</p>
+      </div>
+      <div class="hh-meta">
+        <div id="homeProStatus">Free edition</div>
+        <div>Version 2.0.0</div>
+      </div>
+    </div>
+
+    <div class="hero-upload" id="heroUploadZone" role="button" tabindex="0" aria-label="Drop a PDF anywhere to get started">
+      <div class="hu-icon">📄</div>
+      <div class="hu-title">Drop a PDF anywhere</div>
+      <div class="hu-sub">or click to pick a tool — we'll route PDFs to Merge and PNGs to Images → PDF</div>
+    </div>
+
+    <div class="home-section" id="recentSection" style="display:none;">
+      <h3>Recent tools</h3>
+      <div class="chip-row" id="recentChips"></div>
+    </div>
+
+    <div class="home-section">
+      <h3>Quick actions</h3>
+      <div class="quick-actions">
+        <button class="btn btn-secondary" id="qaSettings">⚙ Settings</button>
+        <button class="btn btn-secondary" id="qaTheme">🌓 Toggle theme</button>
+        <button class="btn btn-secondary" id="qaUpgrade">⭐ Upgrade to Pro</button>
+      </div>
+    </div>
+
+    <div class="home-section">
+      <h3>Tools</h3>
+      <div class="card-grid" id="homeGrid"></div>
+    </div>
+
+    <div class="home-section">
+      <h3>Coming soon</h3>
+      <div class="card-grid" id="comingSoonGrid"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 1: IMAGES -> PDF ===================== -->
+  <section class="panel" id="panel-img2pdf">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Images → PDF</h2>
+    <p class="tool-sub">Select images, hover a thumbnail for rotate/crop/remove, click to preview, and press-and-drag to reorder.</p>
+
+    <div class="dropzone" id="img-dropzone">
+      <div class="icon">🖼️</div>
+      <div class="main-txt">Click to select images</div>
+      <div class="sub-txt">or drag and drop — PNG, JPG, WEBP and more, pick more than one</div>
+      <input type="file" id="img-fileInput" accept="image/*" multiple>
+    </div>
+
+    <ul class="item-list" id="img-pageList"></ul>
+    <div class="empty-msg" id="img-emptyMsg">No pages added yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="img-generateBtn" disabled>Generate PDF</button>
+      <button class="btn btn-secondary" id="img-clearBtn">Clear all</button>
+    </div>
+    <div class="status" id="img-status"></div>
+
+    <div class="download-card" id="img-downloadCard">
+      <div class="field">
+        <label for="img-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="img-filename" value="converted">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="img-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 2: MERGE & ORGANIZE ===================== -->
+  <section class="panel" id="panel-merge">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <div class="tool-heading-row">
+      <h2 class="tool-title">Merge &amp; organize PDFs <span class="pro-badge">PRO</span></h2>
+    </div>
+    <div class="pro-lock-banner" id="merge-lockBanner" style="display:none;">
+      <span>🔒 This is a Pro tool.</span>
+      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+    </div>
+    <p class="tool-sub">Add one or more PDFs, drag pages into any order across files, remove pages you don't want, then combine.</p>
+
+    <div class="dropzone" id="merge-dropzone">
+      <div class="icon">📄</div>
+      <div class="main-txt">Click to select PDF files</div>
+      <div class="sub-txt">or drag and drop — add as many as you need</div>
+      <input type="file" id="merge-fileInput" accept="application/pdf" multiple>
+    </div>
+
+    <ul class="item-list" id="merge-pageList"></ul>
+    <div class="empty-msg" id="merge-emptyMsg">No pages added yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="merge-generateBtn" disabled>Merge into one PDF</button>
+      <button class="btn btn-secondary" id="merge-clearBtn">Clear all</button>
+    </div>
+    <div class="status" id="merge-status"></div>
+
+    <div class="download-card" id="merge-downloadCard">
+      <div class="field">
+        <label for="merge-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="merge-filename" value="merged">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="merge-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 3: SPLIT ===================== -->
+  <section class="panel" id="panel-split">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <div class="tool-heading-row">
+      <h2 class="tool-title">Split a PDF <span class="pro-badge">PRO</span></h2>
+    </div>
+    <div class="pro-lock-banner" id="split-lockBanner" style="display:none;">
+      <span>🔒 This is a Pro tool.</span>
+      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+    </div>
+    <p class="tool-sub">Upload one PDF, pick the pages you want, and choose how to split it up.</p>
+
+    <div class="dropzone" id="split-dropzone">
+      <div class="icon">✂️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="split-fileInput" accept="application/pdf">
+    </div>
+
+    <ul class="item-list" id="split-pageList"></ul>
+    <div class="empty-msg" id="split-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="split-options" style="display:none;">
+      <label>Split mode</label>
+      <div class="radio-group">
+        <label><input type="radio" name="split-mode" value="selected" checked> Extract checked pages into one PDF</label>
+        <label><input type="radio" name="split-mode" value="every"> Every page as its own PDF (zip)</label>
+        <label><input type="radio" name="split-mode" value="ranges"> Split by page ranges (zip)</label>
+      </div>
+      <div class="field" id="split-ranges-field" style="display:none;">
+        <label for="split-ranges">Ranges (comma separated, e.g. 1-3, 4-6, 7)</label>
+        <input type="text" id="split-ranges" placeholder="1-3, 4-6, 7">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="split-generateBtn" disabled>Split PDF</button>
+      <button class="btn btn-secondary" id="split-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="split-status"></div>
+
+    <div class="download-card" id="split-downloadCard">
+      <div class="field">
+        <label for="split-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="split-filename" value="split-output">
+          <span style="color:var(--muted); font-size:13px;" id="split-ext">.pdf</span>
+          <button class="btn btn-primary" id="split-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 4: COMPRESS ===================== -->
+  <section class="panel" id="panel-compress">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <div class="tool-heading-row">
+      <h2 class="tool-title">Compress a PDF <span class="pro-badge">PRO</span></h2>
+    </div>
+    <div class="pro-lock-banner" id="compress-lockBanner" style="display:none;">
+      <span>🔒 This is a Pro tool.</span>
+      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+    </div>
+    <p class="tool-sub">Shrinks embedded JPEG images and repacks the file to save space. Best for scanned or photo-heavy PDFs.</p>
+
+    <div class="dropzone" id="compress-dropzone">
+      <div class="icon">🗜️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="compress-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="compress-emptyMsg">No PDF loaded yet.</div>
+    <div class="field" id="compress-options" style="display:none;">
+      <label for="compress-quality">Image quality: <span id="compress-quality-val">60</span>%</label>
+      <input type="range" id="compress-quality" min="20" max="90" value="60">
+      <div class="hint">Lower = smaller file, more visible quality loss.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="compress-generateBtn" disabled>Compress PDF</button>
+      <button class="btn btn-secondary" id="compress-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="compress-status"></div>
+
+    <div class="download-card" id="compress-downloadCard">
+      <div class="size-note" id="compress-sizeNote"></div>
+      <div class="field">
+        <label for="compress-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="compress-filename" value="compressed">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="compress-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 5: PROTECT ===================== -->
+  <section class="panel" id="panel-protect">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <div class="tool-heading-row">
+      <h2 class="tool-title">Password protect a PDF <span class="pro-badge">PRO</span></h2>
+    </div>
+    <div class="pro-lock-banner" id="protect-lockBanner" style="display:none;">
+      <span>🔒 This is a Pro tool.</span>
+      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+    </div>
+    <p class="tool-sub">Adds a standard PDF password (RC4, 40-bit) so the file needs a password to open.</p>
+
+    <div class="dropzone" id="protect-dropzone">
+      <div class="icon">🔒</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="protect-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="protect-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="protect-options" style="display:none;">
+      <label for="protect-userpw">Password to open the file</label>
+      <input type="password" id="protect-userpw" placeholder="Enter a password" style="max-width:260px;">
+      <div class="hint">Anyone opening this PDF will need this password. Keep it somewhere safe — it can't be recovered.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="protect-generateBtn" disabled>Protect PDF</button>
+      <button class="btn btn-secondary" id="protect-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="protect-status"></div>
+
+    <div class="download-card" id="protect-downloadCard">
+      <div class="field">
+        <label for="protect-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="protect-filename" value="protected">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="protect-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 6: ROTATE ===================== -->
+  <section class="panel" id="panel-rotate">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Rotate Pages</h2>
+    <p class="tool-sub">Upload a PDF, pick pages, and rotate them 90° at a time.</p>
+
+    <div class="dropzone" id="rotate-dropzone">
+      <div class="icon">🔄</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="rotate-fileInput" accept="application/pdf">
+    </div>
+
+    <ul class="item-list" id="rotate-pageList"></ul>
+    <div class="empty-msg" id="rotate-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="rotate-options" style="display:none;">
+      <label>Rotate</label>
+      <div class="actions" style="margin-top:0;">
+        <button class="btn btn-secondary" id="rotate-allLeft">↺ Rotate all left</button>
+        <button class="btn btn-secondary" id="rotate-allRight">↻ Rotate all right</button>
+      </div>
+      <div class="hint">Or use the ↺ / ↻ buttons on individual pages below.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="rotate-generateBtn" disabled>Save rotated PDF</button>
+      <button class="btn btn-secondary" id="rotate-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="rotate-status"></div>
+
+    <div class="download-card" id="rotate-downloadCard">
+      <div class="field">
+        <label for="rotate-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="rotate-filename" value="rotated">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="rotate-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 7: DELETE PAGES ===================== -->
+  <section class="panel" id="panel-deletepages">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Delete Pages</h2>
+    <p class="tool-sub">Upload a PDF and uncheck the pages you want removed.</p>
+
+    <div class="dropzone" id="deletepages-dropzone">
+      <div class="icon">🗑️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="deletepages-fileInput" accept="application/pdf">
+    </div>
+
+    <ul class="item-list" id="deletepages-pageList"></ul>
+    <div class="empty-msg" id="deletepages-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="deletepages-generateBtn" disabled>Delete unchecked pages</button>
+      <button class="btn btn-secondary" id="deletepages-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="deletepages-status"></div>
+
+    <div class="download-card" id="deletepages-downloadCard">
+      <div class="field">
+        <label for="deletepages-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="deletepages-filename" value="pages-removed">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="deletepages-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 8: EXTRACT PAGES ===================== -->
+  <section class="panel" id="panel-extractpages">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Extract Pages</h2>
+    <p class="tool-sub">Upload a PDF and check the pages you want pulled into a new file.</p>
+
+    <div class="dropzone" id="extractpages-dropzone">
+      <div class="icon">📑</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="extractpages-fileInput" accept="application/pdf">
+    </div>
+
+    <ul class="item-list" id="extractpages-pageList"></ul>
+    <div class="empty-msg" id="extractpages-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="extractpages-generateBtn" disabled>Extract checked pages</button>
+      <button class="btn btn-secondary" id="extractpages-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="extractpages-status"></div>
+
+    <div class="download-card" id="extractpages-downloadCard">
+      <div class="field">
+        <label for="extractpages-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="extractpages-filename" value="extracted">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="extractpages-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 9: REVERSE PAGES ===================== -->
+  <section class="panel" id="panel-reverse">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Reverse Page Order</h2>
+    <p class="tool-sub">Upload a PDF and flip the order of every page.</p>
+
+    <div class="dropzone" id="reverse-dropzone">
+      <div class="icon">↩️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="reverse-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="reverse-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="reverse-generateBtn" disabled>Reverse pages</button>
+      <button class="btn btn-secondary" id="reverse-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="reverse-status"></div>
+
+    <div class="download-card" id="reverse-downloadCard">
+      <div class="field">
+        <label for="reverse-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="reverse-filename" value="reversed">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="reverse-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 10: PAGE NUMBERS ===================== -->
+  <section class="panel" id="panel-pagenumbers">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Add Page Numbers</h2>
+    <p class="tool-sub">Stamp a page number onto every page.</p>
+
+    <div class="dropzone" id="pagenumbers-dropzone">
+      <div class="icon">🔢</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="pagenumbers-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="pagenumbers-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="pagenumbers-options" style="display:none;">
+      <label>Position</label>
+      <select id="pagenumbers-position">
+        <option value="bottom-center" selected>Bottom center</option>
+        <option value="bottom-right">Bottom right</option>
+        <option value="bottom-left">Bottom left</option>
+        <option value="top-center">Top center</option>
+        <option value="top-right">Top right</option>
+      </select>
+      <div class="field">
+        <label for="pagenumbers-format">Format</label>
+        <input type="text" id="pagenumbers-format" value="{n} of {total}" style="max-width:220px;">
+        <div class="hint">Use {n} for the page number and {total} for the page count.</div>
+      </div>
+      <div class="field">
+        <label for="pagenumbers-start">Start numbering at</label>
+        <input type="text" id="pagenumbers-start" value="1" style="max-width:100px;">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="pagenumbers-generateBtn" disabled>Add page numbers</button>
+      <button class="btn btn-secondary" id="pagenumbers-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="pagenumbers-status"></div>
+
+    <div class="download-card" id="pagenumbers-downloadCard">
+      <div class="field">
+        <label for="pagenumbers-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="pagenumbers-filename" value="numbered">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="pagenumbers-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 11: WATERMARK ===================== -->
+  <section class="panel" id="panel-watermark">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Watermark PDF</h2>
+    <p class="tool-sub">Overlay diagonal text across every page.</p>
+
+    <div class="dropzone" id="watermark-dropzone">
+      <div class="icon">💧</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="watermark-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="watermark-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="watermark-options" style="display:none;">
+      <label for="watermark-text">Watermark text</label>
+      <input type="text" id="watermark-text" value="CONFIDENTIAL" style="max-width:260px;">
+      <div class="field-row" style="margin-top:14px;">
+        <div class="field" style="margin-top:0;">
+          <label for="watermark-opacity">Opacity: <span id="watermark-opacity-val">30</span>%</label>
+          <input type="range" id="watermark-opacity" min="5" max="80" value="30">
+        </div>
+        <div class="field" style="margin-top:0;">
+          <label for="watermark-size">Font size: <span id="watermark-size-val">48</span>px</label>
+          <input type="range" id="watermark-size" min="16" max="96" value="48">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="watermark-generateBtn" disabled>Add watermark</button>
+      <button class="btn btn-secondary" id="watermark-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="watermark-status"></div>
+
+    <div class="download-card" id="watermark-downloadCard">
+      <div class="field">
+        <label for="watermark-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="watermark-filename" value="watermarked">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="watermark-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 12: PDF -> IMAGES ===================== -->
+  <section class="panel" id="panel-pdf2img">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">PDF → Images</h2>
+    <p class="tool-sub">Export every page as a PNG image, zipped together.</p>
+
+    <div class="dropzone" id="pdf2img-dropzone">
+      <div class="icon">🖼️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="pdf2img-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="pdf2img-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="pdf2img-options" style="display:none;">
+      <label for="pdf2img-scale">Resolution: <span id="pdf2img-scale-val">2</span>x</label>
+      <input type="range" id="pdf2img-scale" min="1" max="4" value="2">
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="pdf2img-generateBtn" disabled>Export images</button>
+      <button class="btn btn-secondary" id="pdf2img-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="pdf2img-status"></div>
+
+    <div class="download-card" id="pdf2img-downloadCard">
+      <div class="field">
+        <label for="pdf2img-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="pdf2img-filename" value="pages">
+          <span style="color:var(--muted); font-size:13px;">.zip</span>
+          <button class="btn btn-primary" id="pdf2img-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 13: EXTRACT IMAGES ===================== -->
+  <section class="panel" id="panel-extractimages">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Extract Images</h2>
+    <p class="tool-sub">Pull embedded JPEG images out of a PDF, zipped together. Non-JPEG images (e.g. some scanned PDFs) may not be extractable this way.</p>
+
+    <div class="dropzone" id="extractimages-dropzone">
+      <div class="icon">🧩</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="extractimages-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="extractimages-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="extractimages-generateBtn" disabled>Extract images</button>
+      <button class="btn btn-secondary" id="extractimages-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="extractimages-status"></div>
+
+    <div class="download-card" id="extractimages-downloadCard">
+      <div class="field">
+        <label for="extractimages-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="extractimages-filename" value="images">
+          <span style="color:var(--muted); font-size:13px;">.zip</span>
+          <button class="btn btn-primary" id="extractimages-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 14: METADATA VIEWER ===================== -->
+  <section class="panel" id="panel-metadata">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">PDF Metadata Viewer</h2>
+    <p class="tool-sub">See the title, author, and other document info stored in a PDF.</p>
+
+    <div class="dropzone" id="metadata-dropzone">
+      <div class="icon">ℹ️</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="metadata-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="metadata-emptyMsg">No PDF loaded yet.</div>
+    <ul class="item-list" id="metadata-list" style="display:none;"></ul>
+  </section>
+
+  <!-- ===================== TAB 15: REMOVE METADATA ===================== -->
+  <section class="panel" id="panel-removemeta">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Remove Metadata</h2>
+    <p class="tool-sub">Strip title, author, subject, keywords, and other identifying info from a PDF.</p>
+
+    <div class="dropzone" id="removemeta-dropzone">
+      <div class="icon">🧹</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="removemeta-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="removemeta-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="removemeta-generateBtn" disabled>Strip metadata</button>
+      <button class="btn btn-secondary" id="removemeta-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="removemeta-status"></div>
+
+    <div class="download-card" id="removemeta-downloadCard">
+      <div class="field">
+        <label for="removemeta-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="removemeta-filename" value="cleaned">
+          <span style="color:var(--muted); font-size:13px;">.pdf</span>
+          <button class="btn btn-primary" id="removemeta-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 16 (NEW): CONVERT LINE BREAKS TO PARAGRAPHS ===================== -->
+  <section class="panel" id="panel-linebreaks">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Convert Line Breaks to Paragraphs</h2>
+    <p class="tool-sub">Upload a DOCX file. Every manual line break (Shift+Enter, <code>&lt;w:br/&gt;</code>) becomes a real paragraph break (Enter). Blank lines are kept, paragraphs are never merged, and nothing is reflowed — formatting, images, tables, headers, and footers are all preserved.</p>
+
+    <div class="dropzone" id="linebreaks-dropzone">
+      <div class="icon">¶</div>
+      <div class="main-txt">Click to select a DOCX file</div>
+      <div class="sub-txt">or drag and drop — .docx only</div>
+      <input type="file" id="linebreaks-fileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    </div>
+
+    <div class="empty-msg" id="linebreaks-emptyMsg">No DOCX loaded yet.</div>
+
+    <div class="field" id="linebreaks-summary" style="display:none;">
+      <div class="hint" id="linebreaks-summaryText"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="linebreaks-generateBtn" disabled>Convert line breaks</button>
+      <button class="btn btn-secondary" id="linebreaks-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="linebreaks-status"></div>
+
+    <div class="field" id="linebreaks-previewField" style="display:none;">
+      <label>Preview</label>
+      <div class="hint">This is a read-only rendering for review. Formatting fidelity in this preview may differ slightly from Word itself; the downloaded DOCX preserves the original formatting.</div>
+      <div id="linebreaks-previewBox" class="docx-preview-paper" style="max-height:420px; overflow:auto; padding:20px; margin-top:10px;"></div>
+    </div>
+
+    <div class="download-card" id="linebreaks-downloadCard">
+      <div class="field">
+        <label for="linebreaks-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="linebreaks-filename" value="paragraphs-fixed">
+          <span style="color:var(--muted); font-size:13px;">.docx</span>
+          <button class="btn btn-primary" id="linebreaks-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 17 (NEW): OCR PDF ===================== -->
+  <section class="panel" id="panel-ocr">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <div class="tool-heading-row">
+      <h2 class="tool-title">OCR PDF <span class="pro-badge">PRO</span></h2>
+    </div>
+    <div class="pro-lock-banner" id="ocr-lockBanner" style="display:none;">
+      <span>🔒 This is a Pro tool.</span>
+      <button class="btn btn-primary" onclick="openUpgradeModal()">Upgrade</button>
+    </div>
+    <p class="tool-sub">Runs text recognition on a scanned or image-based PDF, right in your browser. Output a searchable PDF (original look, invisible selectable text layer) or plain extracted text.</p>
+
+    <div class="dropzone" id="ocr-dropzone">
+      <div class="icon">🔎</div>
+      <div class="main-txt">Click to select a PDF file</div>
+      <div class="sub-txt">or drag and drop</div>
+      <input type="file" id="ocr-fileInput" accept="application/pdf">
+    </div>
+
+    <div class="empty-msg" id="ocr-emptyMsg">No PDF loaded yet.</div>
+
+    <div class="field" id="ocr-options" style="display:none;">
+      <label>Language(s)</label>
+      <div class="hint" style="margin-bottom:8px;">Pick every language present in the document — recognition runs once per page across all of them.</div>
+      <div class="ocr-lang-grid" id="ocr-langGrid">
+        <label class="ocr-lang-chip"><input type="checkbox" value="eng" checked><span>English</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="tam"><span>Tamil</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="hin"><span>Hindi</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="fra"><span>French</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="spa"><span>Spanish</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="deu"><span>German</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="chi_sim"><span>Chinese (Simplified)</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="ara"><span>Arabic</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="rus"><span>Russian</span></label>
+        <label class="ocr-lang-chip"><input type="checkbox" value="por"><span>Portuguese</span></label>
+      </div>
+
+      <label for="ocr-pages" style="margin-top:16px;">Pages</label>
+      <input type="text" id="ocr-pages" placeholder="e.g. 1-3,5 — leave blank for all pages">
+
+      <label style="margin-top:16px;">Output</label>
+      <div class="radio-group">
+        <label><input type="radio" name="ocr-output" value="pdf" checked> Searchable PDF</label>
+        <label><input type="radio" name="ocr-output" value="txt"> Plain text (.txt)</label>
+      </div>
+
+      <label for="ocr-quality" style="margin-top:16px;">Recognition quality: <span id="ocr-quality-val">Balanced</span></label>
+      <input type="range" id="ocr-quality" min="1" max="3" value="2" step="1">
+      <div class="hint">Higher quality renders pages at a larger size before reading them — more accurate, slower. Best for small or dense text.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="ocr-generateBtn" disabled>Run OCR</button>
+      <button class="btn btn-secondary" id="ocr-clearBtn">Clear</button>
+    </div>
+    <div class="status" id="ocr-status"></div>
+    <div class="progress-bar" id="ocr-progressTrack" style="display:none;">
+      <div class="progress-fill" id="ocr-progressFill" style="width:0%;"></div>
+    </div>
+    <div class="progress-detail" id="ocr-progressDetail" style="display:none;"></div>
+
+    <div class="field" id="ocr-previewField" style="display:none;">
+      <label>Extracted text preview</label>
+      <div class="hint">This is a read-only preview of what was recognized on the first processed page.</div>
+      <textarea id="ocr-previewBox" readonly rows="8" style="width:100%; font-family: monospace; font-size:12.5px; margin-top:8px;"></textarea>
+    </div>
+
+    <div class="download-card" id="ocr-downloadCard">
+      <div class="field">
+        <label for="ocr-filename">File name</label>
+        <div class="dl-row">
+          <input type="text" id="ocr-filename" value="searchable">
+          <span style="color:var(--muted); font-size:13px;" id="ocr-fileExt">.pdf</span>
+          <button class="btn btn-primary" id="ocr-downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <section class="panel" id="panel-settings">
+    <button class="back-link" onclick="showView('home')">← Back to Home</button>
+    <h2 class="tool-title">Settings</h2>
+    <p class="tool-sub">Preferences are saved in this browser only.</p>
+
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">Dark mode</div>
+        <div class="sr-hint">☀ Light or 🌙 Dark</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="settings-darkMode"><span class="slider"></span></label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">Default output filename</div>
+        <div class="sr-hint">Used for every tool's download name. Leave blank to use each tool's own default.</div>
+      </div>
+      <input type="text" id="settings-defaultFilename" placeholder="e.g. my-document" style="max-width:220px;">
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">Auto download after processing</div>
+        <div class="sr-hint">Skip the extra click and download as soon as a file is ready.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="settings-autoDownload"><span class="slider"></span></label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">Remember previous filename</div>
+        <div class="sr-hint">Reuse the last filename you typed for each tool.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="settings-rememberFilename" checked><span class="slider"></span></label>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="sr-label">Animations</div>
+        <div class="sr-hint">Turn off hover/transition effects.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="settings-animations" checked><span class="slider"></span></label>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2 class="tool-title">About</h2>
+    <div class="about-box">
+      <div><strong>PDF Toolkit</strong> — Version 2.0.0</div>
+      <div>Made by Wiz</div>
+      <div>Runs completely offline. Nothing is uploaded, ever.</div>
+    </div>
+  </section>
+</div>
+
+<!-- Image preview modal (Images -> PDF) -->
+<div class="modal-overlay" id="imgPreviewModal">
+  <div class="modal-box img-preview-box">
+    <h3 id="imgPreviewName">Preview</h3>
+    <div class="img-preview-container"><img id="imgPreviewImage" src="" alt=""></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="imgPreviewCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Crop modal (shared) -->
+<div class="modal-overlay" id="cropModal">
+  <div class="modal-box">
+    <h3>Crop image</h3>
+    <div class="crop-container"><img id="cropImage" src="" alt=""></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cropCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="cropApplyBtn">Apply crop</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Support the creator - completely optional! -->
+<div class="modal-overlay" id="upgradeModal">
+  <div class="modal-box upgrade-box">
+    <h3>☕ Support This Project</h3>
+    <p style="margin-bottom: 14px;">All tools are completely free — forever. But if you find this useful, consider buying me a coffee! ❤️</p>
+    
+    <div class="donate-amounts">
+      <button class="donate-btn" data-amount="50">₹50</button>
+      <button class="donate-btn" data-amount="100">₹100</button>
+      <button class="donate-btn" data-amount="500">₹500</button>
+      <button class="donate-btn" data-amount="1000">₹1000</button>
+    </div>
+
+    <div class="qr-placeholder" style="margin: 20px 0;">
+      <p style="font-size: 13px; color: var(--muted); margin-bottom: 10px;">Scan with any UPI app:</p>
+      <img src="qr.png" alt="UPI QR" style="width:160px;height:160px;border-radius:20px;">
+      <span style="display:block; margin-top:10px; font-size:13px;">UPI ID: <strong>7010587974@kotakbank</strong></span>
+    </div>
+
+    <p style="font-size:12px; color:var(--muted-2); text-align:center; margin:14px 0 0;">No amount is too small. Every bit helps with server costs and development! 💚</p>
+
+    <div class="modal-actions" style="justify-content:center; margin-top:20px;">
+      <button class="btn btn-secondary" id="upgradeCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+
+<!-- ============================================================
+     NEW TOOL LOGIC — "Convert Line Breaks to Paragraphs"
+     Self-contained. Does not modify app.js or any existing tool.
+     Relies on showView(id) and showToast(msg) already defined in
+     app.js (used the same way by every other tool's back-link).
+     If showToast isn't present, falls back to console logging.
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  const WORD_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+  const state = {
+    originalArrayBuffer: null,
+    originalFilename: '',
+    zip: null,
+    resultBlob: null,
+    breakCount: 0
+  };
+
+  function toast(msg) {
+    if (typeof window.showToast === 'function') { window.showToast(msg); return; }
+    console.log('[linebreaks]', msg);
+  }
+
+  function setStatus(msg, isError) {
+    const el = document.getElementById('linebreaks-status');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = isError ? 'var(--danger, #d33)' : '';
+  }
+
+
+
+  function ensureShowView() {
+    // showView is expected to come from app.js (used by every panel's back-link).
+    // If for some reason it's missing, provide a minimal fallback so this tool
+    // still works standalone, without altering behavior for other tools.
+    if (typeof window.showView === 'function') return;
+    window.showView = function (id) {
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      const target = document.getElementById('panel-' + id);
+      if (target) target.classList.add('active');
+    };
+  }
+
+  // ---- Reset UI ----
+  function resetTool() {
+    state.originalArrayBuffer = null;
+    state.originalFilename = '';
+    state.zip = null;
+    state.resultBlob = null;
+    state.breakCount = 0;
+
+    document.getElementById('linebreaks-emptyMsg').style.display = '';
+    document.getElementById('linebreaks-summary').style.display = 'none';
+    document.getElementById('linebreaks-previewField').style.display = 'none';
+    document.getElementById('linebreaks-previewBox').innerHTML = '';
+    document.getElementById('linebreaks-downloadCard').classList.remove('show');
+    document.getElementById('linebreaks-generateBtn').disabled = true;
+    document.getElementById('linebreaks-fileInput').value = '';
+    setStatus('');
+  }
+
+  // ---- Load DOCX, count qualifying <w:br/> occurrences for the summary ----
+  async function handleFile(file) {
+    if (!file) return;
+    if (!/\.docx$/i.test(file.name)) {
+      setStatus('Please select a .docx file.', true);
+      return;
+    }
+    setStatus('Reading file…');
+    try {
+      const buf = await file.arrayBuffer();
+      state.originalArrayBuffer = buf;
+      state.originalFilename = file.name.replace(/\.docx$/i, '');
+      state.zip = await JSZip.loadAsync(buf);
+
+      const docXmlText = await state.zip.file('word/document.xml').async('text');
+      const count = countQualifyingBreaks(docXmlText);
+      state.breakCount = count;
+
+      document.getElementById('linebreaks-emptyMsg').style.display = 'none';
+      const summaryEl = document.getElementById('linebreaks-summary');
+      summaryEl.style.display = '';
+      document.getElementById('linebreaks-summaryText').textContent =
+        count > 0
+          ? ('Found ' + count + ' manual line break' + (count === 1 ? '' : 's') + ' to convert into paragraph breaks.')
+          : 'No manual line breaks (Shift+Enter) were found in this document.';
+
+      document.getElementById('linebreaks-generateBtn').disabled = count === 0;
+      document.getElementById('linebreaks-filename').value = state.originalFilename + '-paragraphs';
+      setStatus('');
+    } catch (err) {
+      console.error(err);
+      setStatus('Could not read that file — is it a valid DOCX?', true);
+    }
+  }
+
+  function countQualifyingBreaks(xmlText) {
+    // Count <w:br/> elements that are NOT page/column breaks (i.e. no w:type,
+    // or w:type="textWrapping"). Simple regex scan is enough just for the summary count;
+    // the actual conversion below re-parses properly via DOMParser.
+    const re = /<w:br\b([^>]*)\/?>/g;
+    let m, n = 0;
+    while ((m = re.exec(xmlText)) !== null) {
+      const attrs = m[1] || '';
+      const typeMatch = attrs.match(/w:type="([^"]*)"/);
+      const type = typeMatch ? typeMatch[1] : null;
+      if (!type || type === 'textWrapping') n++;
+    }
+    return n;
+  }
+
+  // ---- Core conversion: rewrite word/document.xml, splitting paragraphs at manual breaks ----
+  function convertParagraph(pEl, xmlDoc) {
+    let pPr = null;
+    const otherChildren = [];
+    Array.from(pEl.childNodes).forEach(function (c) {
+      if (c.nodeType === 1 && localName(c) === 'pPr') { pPr = c; }
+      else { otherChildren.push(c); }
+    });
+
+    let paragraphsContent = [[]];
+    let splitHappened = false;
+
+    otherChildren.forEach(function (child) {
+      if (child.nodeType === 1 && localName(child) === 'r') {
+        let rPr = null;
+        const runChildren = [];
+        Array.from(child.childNodes).forEach(function (rc) {
+          if (rc.nodeType === 1 && localName(rc) === 'rPr') { rPr = rc; }
+          else { runChildren.push(rc); }
+        });
+
+        let segments = [[]];
+        runChildren.forEach(function (rc) {
+          if (rc.nodeType === 1 && localName(rc) === 'br') {
+            const typeAttr = rc.getAttribute('w:type') || rc.getAttribute('type');
+            if (!typeAttr || typeAttr === 'textWrapping') {
+              splitHappened = true;
+              segments.push([]);
+              return; // drop the <w:br/> itself — it becomes a paragraph boundary
+            }
+          }
+          segments[segments.length - 1].push(rc);
+        });
+
+        segments.forEach(function (seg, i) {
+          if (i > 0) paragraphsContent.push([]);
+          if (seg.length > 0 || rPr) {
+            const newRun = xmlDoc.createElement('w:r');
+            if (rPr) newRun.appendChild(rPr.cloneNode(true));
+            seg.forEach(function (n) { newRun.appendChild(n.cloneNode(true)); });
+            paragraphsContent[paragraphsContent.length - 1].push(newRun);
+          }
+        });
+      } else {
+        // Non-run children (e.g. w:bookmarkStart, w:proofErr, hyperlink wrappers, etc.)
+        // are preserved as-is, attached to the paragraph segment currently being built.
+        paragraphsContent[paragraphsContent.length - 1].push(child);
+      }
+    });
+
+    if (!splitHappened) return null; // signal "no change needed" so untouched paragraphs are left alone
+
+    return paragraphsContent.map(function (contentArr) {
+      const newP = xmlDoc.createElement('w:p');
+      if (pPr) newP.appendChild(pPr.cloneNode(true));
+      contentArr.forEach(function (n) { newP.appendChild(n); });
+      return newP;
+    });
+  }
+
+  function localName(el) {
+    // Works whether the parser exposes "w:p" as tagName directly (typical for
+    // text/xml parsing of OOXML in browsers) or exposes it via localName.
+    if (el.localName) return el.localName;
+    const tn = el.tagName || '';
+    return tn.indexOf(':') >= 0 ? tn.split(':')[1] : tn;
+  }
+
+  function matchesTag(el, name) {
+    return el.nodeType === 1 && localName(el) === name;
+  }
+
+  async function convertDocx() {
+    if (!state.zip) return;
+    setStatus('Converting…');
+    document.getElementById('linebreaks-generateBtn').disabled = true;
+    try {
+      const xmlText = await state.zip.file('word/document.xml').async('text');
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+      const perr = xmlDoc.getElementsByTagName('parsererror');
+      if (perr && perr.length) throw new Error('Could not parse document.xml');
+
+      // Collect all w:p first (live NodeList would break as we mutate the tree)
+      const allP = Array.from(xmlDoc.getElementsByTagName('w:p')).length
+        ? Array.from(xmlDoc.getElementsByTagName('w:p'))
+        : Array.from(xmlDoc.getElementsByTagNameNS(WORD_NS, 'p'));
+
+      allP.forEach(function (p) {
+        const replacement = convertParagraph(p, xmlDoc);
+        if (replacement && replacement.length > 1) {
+          const parent = p.parentNode;
+          replacement.forEach(function (np) { parent.insertBefore(np, p); });
+          parent.removeChild(p);
+        }
+      });
+
+      const serializer = new XMLSerializer();
+      let newXml = serializer.serializeToString(xmlDoc);
+      if (!/^<\?xml/.test(newXml)) {
+        newXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + newXml;
+      }
+
+      state.zip.file('word/document.xml', newXml);
+      const outBlob = await state.zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+      state.resultBlob = outBlob;
+
+      document.getElementById('linebreaks-downloadCard').classList.add('show');
+      setStatus('Done — ' + state.breakCount + ' line break' + (state.breakCount === 1 ? '' : 's') + ' converted.');
+      toast('Line breaks converted to paragraphs.');
+
+      renderPreview(outBlob);
+    } catch (err) {
+      console.error(err);
+      setStatus('Something went wrong during conversion. The file was not modified.', true);
+    } finally {
+      document.getElementById('linebreaks-generateBtn').disabled = false;
+    }
+  }
+
+  async function renderPreview(blob) {
+    const box = document.getElementById('linebreaks-previewBox');
+    const field = document.getElementById('linebreaks-previewField');
+    if (typeof window.mammoth === 'undefined') {
+      field.style.display = 'none';
+      return;
+    }
+    try {
+      const buf = await blob.arrayBuffer();
+      const result = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+      box.innerHTML = result.value;
+      field.style.display = '';
+    } catch (err) {
+      console.error('Preview failed:', err);
+      field.style.display = 'none';
+    }
+  }
+
+  function downloadResult() {
+    if (!state.resultBlob) return;
+    const nameInput = document.getElementById('linebreaks-filename');
+    const name = (nameInput.value || 'paragraphs-fixed').trim() || 'paragraphs-fixed';
+    const url = URL.createObjectURL(state.resultBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name.replace(/\.docx$/i, '') + '.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function wireUp() {
+    const dropzone = document.getElementById('linebreaks-dropzone');
+    const fileInput = document.getElementById('linebreaks-fileInput');
+
+    dropzone.addEventListener('click', function () { fileInput.click(); });
+    dropzone.addEventListener('dragover', function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+
+    document.getElementById('linebreaks-generateBtn').addEventListener('click', convertDocx);
+    document.getElementById('linebreaks-clearBtn').addEventListener('click', resetTool);
+    document.getElementById('linebreaks-downloadBtn').addEventListener('click', downloadResult);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    ensureShowView();
+    wireUp();
+    // Slight delay so we append after app.js has finished building the home grid,
+    // regardless of script execution order.
+  });
+})();
+</script>
+
+<!-- ============================================================
+     PREMIUM UX LAYER — self-contained, purely additive.
+     Adds cursor spotlight, magnetic hover, ripple press effect,
+     global ESC handling, and hero-upload routing. Does not modify
+     app.js or any existing tool logic; only reads window.showView /
+     window.closeUpgradeModal-style state that already exists.
+     ============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- Cursor spotlight + magnetic hover (desktop, motion-safe only) ---- */
+  if (!isTouch && !reduceMotion) {
+    const spotlight = document.getElementById('cursorSpotlight');
+    let raf = null;
+    document.addEventListener('mousemove', function (e) {
+      if (spotlight) spotlight.classList.add('active');
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        document.documentElement.style.setProperty('--cursor-x', e.clientX + 'px');
+        document.documentElement.style.setProperty('--cursor-y', e.clientY + 'px');
+        raf = null;
+      });
+    }, { passive: true });
+    document.addEventListener('mouseleave', function () {
+      if (spotlight) spotlight.classList.remove('active');
+    });
+
+    // Magnetic effect for primary buttons and tool cards.
+    function attachMagnetic(el) {
+      el.classList.add('magnetic');
+      el.addEventListener('mousemove', function (e) {
+        const r = el.getBoundingClientRect();
+        const mx = (e.clientX - r.left - r.width / 2) * 0.06;
+        const my = (e.clientY - r.top - r.height / 2) * 0.06;
+        el.style.transform = 'translate(' + mx + 'px,' + my + 'px)';
+      });
+      el.addEventListener('mouseleave', function () { el.style.transform = ''; });
+    }
+    document.addEventListener('mouseover', function (e) {
+      const t = e.target.closest('.btn-primary, .pro-pill, .tool-card');
+      if (t && !t.classList.contains('magnetic')) attachMagnetic(t);
+    });
+  }
+
+  /* ---- Ripple press position for .btn (feeds --ripple-x/--ripple-y) ---- */
+  document.addEventListener('pointerdown', function (e) {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    btn.style.setProperty('--ripple-x', ((e.clientX - r.left) / r.width * 100) + '%');
+    btn.style.setProperty('--ripple-y', ((e.clientY - r.top) / r.height * 100) + '%');
+  });
+
+  /* ---- Global ESC: close modals/cropper first, else go Home ---- */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    const openModal = document.querySelector('.modal-overlay.show');
+    if (openModal) {
+      const cancelBtn = openModal.querySelector('#cropCancelBtn, #upgradeCloseBtn, #imgPreviewCloseBtn');
+      if (cancelBtn) { cancelBtn.click(); }
+      else { openModal.classList.remove('show'); }
+      return;
+    }
+    const activePanel = document.querySelector('.panel.active');
+    if (activePanel && activePanel.id !== 'panel-home' && typeof window.showView === 'function') {
+      window.showView('home');
+    }
+  });
+
+  /* ---- Hero upload zone: routes PDFs to Merge, PNGs to Images -> PDF ---- */
+  function routeFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const allImages = files.every(function (f) { return /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(f.name); });
+    const targetId = allImages ? 'img2pdf' : 'merge';
+    const inputId = allImages ? 'img-fileInput' : 'merge-fileInput';
+    if (typeof window.showView === 'function') window.showView(targetId);
+    setTimeout(function () {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      try {
+        const dt = new DataTransfer();
+        files.forEach(function (f) { dt.items.add(f); });
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {
+        // DataTransfer not supported in this browser; user can still pick
+        // manually since we've already navigated to the right tool.
+        console.warn('Could not auto-fill files:', err);
+      }
+    }, 50);
+  }
+
+  function wireHeroUpload() {
+    const zone = document.getElementById('heroUploadZone');
+    if (!zone) return;
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'file';
+    hiddenInput.multiple = true;
+    hiddenInput.accept = 'application/pdf,image/png';
+    hiddenInput.style.display = 'none';
+    document.body.appendChild(hiddenInput);
+
+    zone.addEventListener('click', function () { hiddenInput.click(); });
+    zone.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hiddenInput.click(); }
+    });
+    hiddenInput.addEventListener('change', function () { routeFiles(hiddenInput.files); });
+
+    zone.addEventListener('dragover', function (e) { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', function () { zone.classList.remove('dragover'); });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      routeFiles(e.dataTransfer.files);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', wireHeroUpload);
+})();
+</script>
+
+</body>
+</html>

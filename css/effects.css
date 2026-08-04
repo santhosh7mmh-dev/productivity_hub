@@ -1,0 +1,122 @@
+/*
+  effects.css
+  -----------
+  Purely decorative, pointer-events:none layers. Positions/opacity are
+  driven at runtime by js/effects/effects.js writing CSS custom
+  properties (--cursor-x, --cursor-y, etc.) — this file only defines
+  what those properties are used for and the ambient drift keyframes.
+
+  Everything in here is skipped when [data-motion="reduced"] is set
+  (see tokens.css) or when Settings > Reduce motion is off... err, on.
+*/
+
+.bg-effects {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-effects);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ---- Ambient aurora: 3 large blurred blobs drifting slowly ---- */
+.bg-aurora span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  will-change: transform;
+  animation: auroraDrift 26s var(--ease-in-out) infinite alternate;
+}
+.bg-aurora span:nth-child(1) {
+  width: 46vw; height: 46vw;
+  top: -14%; left: -8%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), .30), transparent 70%);
+  animation-delay: 0s;
+}
+.bg-aurora span:nth-child(2) {
+  width: 38vw; height: 38vw;
+  bottom: -16%; right: -6%;
+  background: radial-gradient(circle, rgba(var(--accent-2-rgb), .22), transparent 70%);
+  animation-delay: -8s;
+  animation-duration: 32s;
+}
+.bg-aurora span:nth-child(3) {
+  width: 30vw; height: 30vw;
+  bottom: 18%; left: 22%;
+  background: radial-gradient(circle, rgba(var(--accent-3-rgb), .16), transparent 70%);
+  animation-delay: -16s;
+  animation-duration: 22s;
+}
+@keyframes auroraDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(4%, 6%) scale(1.08); }
+  100% { transform: translate(-3%, -4%) scale(.96); }
+}
+[data-motion="reduced"] .bg-aurora span { animation: none; }
+
+/* ---- Document-wide cursor spotlight (desktop, mouse only) ----
+   Follows --cursor-x / --cursor-y written by effects.js on pointermove.
+   Fades itself out automatically after a moment of inactivity via the
+   .idle class effects.js toggles. */
+.cursor-spotlight {
+  position: fixed;
+  top: 0; left: 0;
+  width: 620px; height: 620px;
+  margin-left: -310px; margin-top: -310px;
+  transform: translate(var(--cursor-x, -1000px), var(--cursor-y, -1000px));
+  background: radial-gradient(circle, rgba(var(--accent-rgb), .10), transparent 65%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: var(--z-spotlight);
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+  will-change: transform;
+}
+.cursor-spotlight.active { opacity: 1; }
+[data-motion="reduced"] .cursor-spotlight,
+.no-fine-pointer .cursor-spotlight { display: none; }
+
+/* ---- Hero local glow: tighter, brighter, only inside the hero card ---- */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  top: var(--hero-y, 50%); left: var(--hero-x, 50%);
+  width: 420px; height: 420px;
+  margin-left: -210px; margin-top: -210px;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), .30), transparent 70%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+.home-hero:hover .hero-glow::before { opacity: 1; }
+[data-motion="reduced"] .hero-glow::before { display: none; }
+
+/* ---- Touch ripple (mobile: brief glow on touchstart, no continuous tracking) ---- */
+.touch-glow {
+  position: fixed;
+  width: 260px; height: 260px;
+  margin-left: -130px; margin-top: -130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), .22), transparent 70%);
+  pointer-events: none;
+  z-index: var(--z-spotlight);
+  opacity: 0;
+  transform: scale(.4);
+  transition: none;
+}
+.touch-glow.firing {
+  animation: touchGlowPulse 550ms var(--ease-out) forwards;
+}
+@keyframes touchGlowPulse {
+  0%   { opacity: .9; transform: scale(.4); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* ---- Magnetic hover target (desktop only; JS adds inline transform) ---- */
+.magnetic { transition: transform var(--dur-fast) var(--ease-spring); }

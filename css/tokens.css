@@ -1,0 +1,184 @@
+/*
+  tokens.css
+  ----------
+  Single source of truth for the visual language. Every color, type size,
+  spacing step, radius and shadow used anywhere in the app is defined here
+  as a CSS custom property. Nothing else in the codebase should hardcode
+  a hex value or a px size for these concerns — reach for a token instead.
+
+  Theme switching works by swapping the values on [data-theme="dark"] vs
+  [data-theme="light"] on <html>; every component consumes the same
+  variable names regardless of which theme is active.
+*/
+
+:root {
+  /* ---- Type scale ---- */
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
+
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.7;
+
+  /* ---- Spacing (4px base) ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ---- Radii ---- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+  --r-full: 999px;
+
+  /* ---- Motion ---- */
+  --dur-fast: 140ms;
+  --dur-med: 260ms;
+  --dur-slow: 480ms;
+  --ease-out: cubic-bezier(.16,.8,.3,1);
+  --ease-in-out: cubic-bezier(.65,0,.35,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+
+  /* ---- Layout ---- */
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 76px;
+  --header-h: 60px;
+  --content-max: 1180px;
+
+  /* ---- Z-index scale ---- */
+  --z-effects: 1;
+  --z-content: 10;
+  --z-sidebar: 100;
+  --z-header: 110;
+  --z-dropdown: 200;
+  --z-toast: 300;
+  --z-modal: 400;
+  --z-palette: 500;
+  --z-spotlight: 600;
+}
+
+/* ============================================================
+   DARK THEME (default)
+   Ink-navy base with a violet primary and warm amber secondary —
+   deliberately not the "near-black + single acid accent" default:
+   two accents in tension (cool violet / warm amber) is the signature.
+   ============================================================ */
+:root,
+[data-theme="dark"] {
+  --bg: #0a0c12;
+  --bg-elevated: #10131c;
+  --bg-inset: #05060a;
+
+  --panel-bg: rgba(255, 255, 255, 0.045);
+  --panel-bg-strong: rgba(255, 255, 255, 0.07);
+  --glass-blur: 20px;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --text: #eef0f6;
+  --text-strong: #ffffff;
+  --muted: #8b93a7;
+  --muted-2: #5c6478;
+
+  --accent: #7c6fee;
+  --accent-rgb: 124, 111, 238;
+  --accent-soft: rgba(124, 111, 238, 0.14);
+  --accent-2: #f5b942;
+  --accent-2-rgb: 245, 185, 66;
+  --accent-3: #4fd1a5;
+  --accent-3-rgb: 79, 209, 165;
+
+  --danger: #f2545b;
+  --danger-soft: rgba(242, 84, 91, 0.14);
+  --success: #4fd1a5;
+  --warning: #f5b942;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 8px 24px rgba(0,0,0,.35);
+  --shadow-lg: 0 24px 64px rgba(0,0,0,.45);
+  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,.06);
+  --glow-sm: 0 0 0 1px rgba(var(--accent-rgb), .3), 0 4px 16px rgba(var(--accent-rgb), .18);
+  --glow-md: 0 0 0 1px rgba(var(--accent-rgb), .35), 0 8px 32px rgba(var(--accent-rgb), .28);
+
+  --scrollbar-thumb: rgba(255,255,255,.14);
+  color-scheme: dark;
+}
+
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
+[data-theme="light"] {
+  --bg: #f4f5f8;
+  --bg-elevated: #ffffff;
+  --bg-inset: #eceef3;
+
+  --panel-bg: rgba(255, 255, 255, 0.7);
+  --panel-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-blur: 18px;
+  --border: rgba(15, 18, 30, 0.09);
+  --border-strong: rgba(15, 18, 30, 0.18);
+
+  --text: #1a1d29;
+  --text-strong: #05060a;
+  --muted: #656d80;
+  --muted-2: #9aa1b2;
+
+  --accent: #6a5cf0;
+  --accent-rgb: 106, 92, 240;
+  --accent-soft: rgba(106, 92, 240, 0.10);
+  --accent-2: #d68c1a;
+  --accent-2-rgb: 214, 140, 26;
+  --accent-3: #1fa97e;
+  --accent-3-rgb: 31, 169, 126;
+
+  --danger: #d8383f;
+  --danger-soft: rgba(216, 56, 63, 0.10);
+  --success: #1fa97e;
+  --warning: #d68c1a;
+
+  --shadow-sm: 0 1px 2px rgba(20,20,40,.06);
+  --shadow-md: 0 8px 24px rgba(20,20,40,.08);
+  --shadow-lg: 0 24px 64px rgba(20,20,40,.12);
+  --shadow-inset-top: inset 0 1px 0 rgba(255,255,255,.6);
+  --glow-sm: 0 0 0 1px rgba(var(--accent-rgb), .25), 0 4px 16px rgba(var(--accent-rgb), .12);
+  --glow-md: 0 0 0 1px rgba(var(--accent-rgb), .3), 0 8px 32px rgba(var(--accent-rgb), .18);
+
+  --scrollbar-thumb: rgba(15,18,30,.14);
+  color-scheme: light;
+}
+
+/* ---- Font size preference (Settings > Font size) ----
+   Applied as a multiplier on the root, so every rem-based size in the
+   app scales together. Toggled by adding a data attribute to <html>. */
+[data-fontsize="sm"] { font-size: 14px; }
+[data-fontsize="md"] { font-size: 16px; }
+[data-fontsize="lg"] { font-size: 18px; }
+
+/* ---- Reduced motion : both OS-level and the in-app override in
+   Settings collapse onto this single attribute so every animated
+   rule only has to check one thing. ---- */
+[data-motion="reduced"] * ,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
